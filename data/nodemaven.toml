@@ -1,0 +1,349 @@
+# NodeMaven.
+#
+# `status = "measured"` means this dialect was read off the wire rather than
+# copied out of documentation: every value below was confirmed by raw CONNECT
+# probes on the date recorded. A definition marked `documented` has never been
+# exercised, and the difference matters because a wrong username is invisible -
+# see `notes`.
+label = "NodeMaven"
+status = "measured"
+source = "dashboard proxy generator, plus raw CONNECT probes"
+source_read = "2026-08-12"
+
+# <login>-country-us-sid-abc123-ttl-10m
+prefix = "{login}"
+separator = "-"
+pair_separator = "-"
+session_param = "sid"
+
+host = "gate.nodemaven.com"
+port = 8080
+
+# Returned on the CONNECT reply, so an exit address costs one handshake and no
+# target traffic. Not guaranteed: more than one implementation answers on this
+# gateway and they spell the header differently, so the key is a list, read in
+# order, and the first name present wins. A reply carrying none of them is
+# normal and not an error.
+#
+# Which back end answers is decided by the username and cannot be asked for, so
+# the name set is sampled rather than looked up. What the sample holds:
+#
+#   2026-09-08, `lab\probes\probe_gateway_parameter_case.py`, eight 200 replies:
+#     `X-Proxy-Exit-IP` in five, `X-Exit-IP` in two, no address in one.
+#   2026-09-10, `lab\probes\probe_competitor_dialects.py`, two rounds of one arm:
+#     `200 'Connection established'` carried `X-Proxy-Exit-IP` alone;
+#     `200 'OK'` carried `X-Exit-IP` beside `X-Exit-Country`, `X-Exit-Timezone`
+#     and `X-Exit-ASN`.
+#
+# A third reason phrase, `Connection Established`, has been seen and its header
+# set has not. A string is still accepted here for one name; a list became
+# legal on 2026-09-29, before which one name was all this key could say and
+# `Check.exit_ip` came back empty on replies that did carry an address.
+exit_ip_header = ["X-Proxy-Exit-IP", "X-Exit-IP"]
+
+# Confirmed to be recognised. Anything outside this set is refused before a
+# request exists, because the gateway answers an unknown name with 200 and the
+# setting silently dropped.
+#
+# `norotate` was added to this list on 2026-08-21 and taken back out on
+# 2026-08-26, and the round trip is worth keeping because the reasoning that put
+# it here is a mistake this file is otherwise built to prevent.
+#
+# It was added on provenance: it appears in the vendor's own proxy generator,
+# which emits `...-sid-<id>-filter-medium-norotate-true`, the same way `speed`
+# turned up on 2026-08-12. The note written at the time said it "cannot be found
+# by probing", because an unrecognised name and a name we have not heard of
+# produce identical evidence - a 200 with the setting dropped. That sentence was
+# treated as a limitation of probing. It was not. It was the one observation
+# available, and it pointed the other way.
+#
+# Probed from the VPS on 2026-08-26 against gate.nodemaven.com:8080, three ways,
+# each carrying a negative control with a name nobody could have implemented and
+# a positive control on `filter`:
+#
+#   junk value            200, exactly as the unknown name is answered
+#   no sid, 6 draws       6 distinct exits of 6, exactly as both controls
+#   fixed sid, ttl=1m,    3 distinct exits of 3, exactly as both controls
+#   sampled 0/78/157 s
+#
+# So the gateway answers 200 and drops it, which is what this file said before
+# 2026-08-21. Rotation is what `norotate` claims to change, and it does not
+# change it; that is a measurement of the effect, not of the name.
+#
+# The same 2026-08-26 probe settled two more names, and this file is the first
+# shipped definition to carry them. It asked the gateway which names it knows by
+# sending each one a junk value, which discriminates where acceptance does not:
+# an unrecognised name is answered 200 and dropped, a recognised one refuses the
+# value with 407. Negative control `zzqqx`, a name nobody implemented, 200;
+# positive control `filter`, recognised since 2026-08-10, 407.
+#
+#   type        407   recognised - an unknown name cannot produce this
+#   speed       407   recognised, confirming the 2026-08-12 generator read
+#   norotate    200   indistinguishable from the unknown name, hence removed
+#
+# `type` is the expensive one, because refusing it refused a product tier. It
+# selects the network rather than labelling it: 5 echo requests per arm with a
+# fresh sid and `country=us`, `type=mobile` drew AS21928 T-Mobile three times,
+# one AS6167 - Cellco, the wireless side of Verizon - and one AS7018, while
+# `type=residential` and the unset arm drew Comcast, Charter, Windstream,
+# Metronet, Fidium, Planet and AS701 wireline with no mobile ASN between them.
+# So it moves you to a different pool of addresses, not to a quality filter over
+# one pool. It surfaced by reading the vendor's own public SDK at
+# `nodemavencom/proxy` and was then verified the two ways above rather than
+# taken from it, which is the rule `norotate` was written to enforce.
+#
+# `speed` is therefore no longer "a probe waiting to be run". Its name is
+# confirmed; its effect is still unmeasured, and those are different claims.
+#
+# `ipv4` is the one name here a junk value cannot settle, and it was settled a
+# different way on 2026-09-08. `ipv4` = true, TRUE, True and zzqqx are all
+# answered 200, so the discriminator above is unavailable for it and its evidence
+# was identical to a name nobody implemented - the position `norotate` was in.
+#
+# The handle that works is the sticky session, whose key is the *parsed*
+# parameter set: a name the gateway parses joins the key and a name it drops
+# cannot. Two independent session ids, two rounds each, five interleaved arms,
+# with both controls holding in both blocks - the unknown name landed on the
+# baseline exit every time and `filter` = medium moved off it every time:
+#
+#   ipv4 = true    a third exit, distinct from baseline and from `filter`, 4 of 4
+#   ipv4 = false   the baseline exit, 4 of 4 - indistinguishable from the
+#                  unknown name
+#
+# So the name is parsed, which is what separates it from `norotate` at last. What
+# `false` does is not settled: it is the default and so resolves to the
+# baseline's parameter set, or that one value is dropped, and nothing measured
+# separates those.
+#
+# The effect is a third claim and is also unsettled. Six draws against a
+# dual-stacked echo returned one IPv6 exit, under `ipv4` unset, and five IPv4.
+# That row is worth more than it looks - it proves the pool holds an IPv6-capable
+# exit and that the instrument can see one - and at two draws per arm it says
+# nothing about direction. So `ipv4` is a confirmed name whose effect is
+# unmeasured, exactly like `speed`.
+known_params = ["country", "region", "city", "isp", "sid", "ttl", "filter",
+                "ipv4", "speed", "type"]
+
+# Values folded to their wire form before anything else looks at them: trim ASCII
+# whitespace, lower-case A-Z, then each space to `_`. ASCII and not Unicode at
+# every step, because `to_lowercase` and `.lower()` disagree between languages on
+# characters like `I` with a dot, and a schema four SDKs share cannot depend on
+# which one is running it.
+#
+# Added 2026-09-07 on two independent sources, which is the bar `norotate` set
+# and failed. A username this gateway generated for a real account contains
+# `region-district_of_columbia` - lower case, spaces as underscores - so that
+# form is not a guess about what the gateway accepts, it is a copy of what the
+# gateway itself emitted. Independently, the vendor's own client at
+# `nodemavencom/proxy`, in `python/nodemaven/utils.py`, applies exactly this
+# transformation before building the username.
+#
+# The distinction from `norotate` is the whole reason this is allowed to ship
+# unprobed. `norotate` asserted the gateway *recognises a name*, which its own
+# generator cannot establish, since an unrecognised name is answered 200 and
+# dropped. This converts an input of unknown behaviour - `region="District of
+# Columbia"`, which cannot be right, a space does not fit in a username - into
+# one that is known to work. There is no false refusal available here to be
+# wrong about.
+#
+# Five parameters and not more, and the omissions are each for a reason:
+#
+#   sid       opaque and caller-chosen. Folding it would rename an identity the
+#             caller picked, so it is left alone whatever the gateway does.
+#
+#             This entry said until 2026-09-08 that "`sid=Order4417` and
+#             `sid=order4417` are two sessions on this gateway and the caller
+#             picked one of them", written as a fact about the gateway. Nothing
+#             ever probed it, in a block that is otherwise explicit about how
+#             many sources each claim has.
+#
+#             What the mistake looked like from the inside: the decision is
+#             right either way - an SDK must not rewrite an identifier its
+#             caller chose - so the sentence read as the explanation of a
+#             settled choice rather than as a claim that could be false. Same
+#             shape as `norotate` two blocks up, with the damage somewhere
+#             else. `norotate` put a dead parameter in the library; this put a
+#             sentence in the published README telling a reader they hold two
+#             independent sessions when they may hold one - which is the
+#             failure `secrets`-not-`random` in `proxy.py` exists to prevent,
+#             arriving by another route.
+#
+#             Acceptance cannot settle it, because every `sid` value is
+#             accepted, so the discriminator has to be the exit address:
+#             `lab\probes\probe_gateway_parameter_case.py`, phase 3.
+#   filter    the vendor's client does not fold it, not even to lower case, and
+#             the generated username above says nothing either way because
+#             `medium` was already lower case.
+#   ttl       the one value on this gateway whose case matters: `10M` is refused
+#             where `10m` is accepted. It is still not folded, and that is the
+#             decision rather than an oversight - folding here would encode
+#             which spellings the gateway takes today into a library that
+#             cannot re-measure them. The caller is told instead, in the 407
+#             reaction below and in the README.
+#   speed     absent from their builder entirely - see the note above, its name
+#             is confirmed and nothing else about it is.
+#   ipv4      a bool, written by the SDK and never by the caller.
+#
+# `country` and `type` are folded with the same rule as the three location names
+# even though their values contain no spaces, because one rule in four languages
+# is cheaper to keep true than two.
+normalize = ["country", "region", "city", "isp", "type"]
+
+# Legal values per parameter, checked before anything is sent.
+#
+# Deliberately empty. An entry here is a refusal, so a wrong entry blocks a
+# setting the gateway would have accepted, and that is worse than the gap it
+# closes. What is known as of 2026-08-21 is which values the vendor's proxy
+# generator *emits* - `filter` as `medium`, `speed` as `fast`, `country` as
+# `any` or a code - and that is a sample of one UI's output, not the set the
+# gateway accepts. The two are only the same if the generator can emit
+# everything, which nobody has checked.
+#
+# The generator is not a source of truth about the gateway at all. It also emits
+# `norotate`, and the gateway drops it - see the note on `known_params`.
+#
+# `ttl` is the closest call and is still not listed. Four values are measured
+# accepted and three measured refused - see `notes` - which is more than any
+# other parameter has, and it is still a sample rather than a set: a list of four
+# would refuse `2h` and `30m` if the gateway takes them, loudly, with our name on
+# the error. The unit rule belongs in prose until somebody enumerates the range.
+#
+# The key exists anyway, and that is the point: four language SDKs read this
+# schema. Filling this in later is an edit to a data file. Adding the key
+# later would be an edit to four parsers.
+#
+# Lists only, never a regular expression - see the note in providers.py.
+#
+# Written inline rather than as a `[values]` table on purpose: a table header
+# here would swallow every key below it, starting with `notes`.
+values = {}
+
+notes = """
+Sticky sessions key on the whole recognised parameter set, not on `sid` alone.
+`country=us, sid=A` and `country=us, sid=A, filter=medium` are two different
+sessions; `ttl` does not participate and `filter` does. Adding or removing any
+parameter moves you to another exit without saying so. Measured 2026-08-10.
+
+The key is the parsed SET and parameter *order* does not reach it. Measured
+2026-09-08, 20 rounds a side: the canonical order and a shuffled one drew the
+same exit 20 times each, while a control differing by one parameter value drew a
+different exit 20 times. The exit was read from an echo service on every round
+rather than from a proxy response header, because the header is sent by some
+back ends and not others and the back end is chosen by the username - reading
+two arms with two instruments would have compared the instruments. This is why
+both SDKs may emit parameters in a fixed order without changing which exit you
+get.
+
+A value the gateway will not take is answered several different ways and not one
+of them names the parameter. Read by raw CONNECT on 2026-09-08 unless another
+date is given:
+
+  bad `country` value      407 Proxy Authentication Required
+  bad `region` value       406 Not Acceptable
+  bad `city` value         406 Not Acceptable, the same code a bad `region` and
+                           a bad `isp` give
+  `city` without `region`  500 Internal Server Error. `city` works, and it needs
+                           its own `region` beside it: `us`/`louisiana`/
+                           `abbeville` answers 200, and so does a second city in
+                           a second region, while the same city with the region
+                           removed answers 500. So the 500 is a request the
+                           gateway could not resolve and not a fault on their
+                           side. The Python SDK's `Client.validate()` refuses
+                           the combination before sending; the Rust SDK has no
+                           account API yet and so cannot
+  bad `isp` value          406 Not Acceptable, the same code a bad `region`
+                           gives, so 406 does not say which of the two was
+                           refused. `charter`, a real ISP, also answers 406,
+                           while `comcast` answers 410 - so a real name is not
+                           reliably told from a junk one either
+  `isp` = comcast          410 Gone, and the only value measured to produce it
+  bad `filter` value       407 Proxy Authentication Required
+  bad `ttl` value          407 Proxy Authentication Required
+  bad `type` value         407 Proxy Authentication Required (2026-08-26)
+  bad `speed` value        407 Proxy Authentication Required (2026-08-26)
+  empty value              no reply, the connection hangs about 20 s
+                           (2026-08-10)
+  unknown parameter name   200, and the parameter is ignored
+
+Every 407 in that list sends you to check credentials that are correct. With no
+`country` the default country is not stable.
+
+`ttl` counts in minutes and hours. `1m`, `10m`, `10h` and `24h` open the tunnel;
+`10s`, `10d` and a bare `10` are answered 407. It is also the one parameter whose
+value case matters: `10M` is refused where `10m` is accepted. Nothing else
+measured cares - `us` and `US`, `medium` and `MEDIUM`, `residential` and
+`RESIDENTIAL`, `district_of_columbia` in either case are all accepted. Parameter
+*names* are folded by the gateway: `COUNTRY` and `Ttl` refuse a junk value
+exactly as their lower-case spellings do, so a name is recognised in any case.
+
+A value containing the separator is cut at it and the tail is read as a
+parameter name, for every parameter and not only for `sid`. `isp` = verizon
+opens the tunnel and a junk `isp` answers 406, while `isp` = verizon-zzqqx-zzqqx
+answers 200 - so the gateway took `verizon` as the ISP and dropped the rest as an
+unrecognised name. Both SDKs refuse such a value before sending, because the
+alternative is a request that succeeds with settings nobody asked for.
+
+The response head is not always CRLF framed. A 200 is; a 406 and a 407 arrive
+with bare LF line endings and `Connection: close`. A reader that ends a head at
+CRLF CRLF and nowhere else sees every refusal as a truncated head and reports a
+transport failure instead of the status code.
+
+An exit address arrives on the CONNECT reply itself, so it costs one handshake
+and no target traffic. It is not guaranteed and the header name varies by back
+end - see `exit_ip_header` above. Treat a reply with no address as normal.
+"""
+
+# What each CONNECT status means here. This is the machine-readable half of the
+# table in `notes` above, and it exists because a status code on this gateway is
+# not a diagnosis: five parameters answer a bad value with 407, which reads as a
+# credentials problem and is not one. `check()` shows the caller this sentence
+# next to the code.
+#
+# Both halves are kept. The prose carries the shape of the finding - one class of
+# mistake answered five different ways, none naming the parameter - and no format
+# renders that as a lookup table. These entries carry the answer to "I got a 407,
+# now what".
+#
+# One entry per status actually measured. A default sentence would be this SDK
+# inventing a diagnosis, which is the thing it exists to stop the gateway doing.
+#
+# No dates in these five strings, unlike everywhere else in this file. They are
+# printed to a caller whose tunnel has just failed and who wants to know what to
+# check; when we measured it is not part of that answer. The date and the probe
+# behind each sentence are in `notes` above and in each SDK's CHANGELOG, which
+# is where a reader asking whether this is still true will go.
+#
+# Last in the file on purpose: a `[table]` header in TOML swallows every key
+# after it, so putting this above `notes` would make `notes` a member of it.
+[connect_reactions]
+200 = """\
+the gateway accepted the request and opened the tunnel. Note what this does not \
+say: an unrecognised parameter name is also answered with 200 and silently \
+dropped, so a 200 means the parameters were accepted and not that they were all \
+applied. This SDK refuses unknown names before sending for exactly that reason."""
+406 = """\
+`region`, `city` or `isp` names something this account cannot have. A junk \
+`region`, a junk `city`, a junk `isp` and `charter` - a real ISP - all answer \
+406, so this code says neither which of the three parameters was refused nor \
+whether the name is unknown or merely unavailable. Check all three values, and \
+see the 410 entry for the one ISP that is answered differently."""
+407 = """\
+usually NOT your credentials, despite what the status says. A value the gateway \
+will not take on `country`, `filter`, `ttl`, `type` or `speed` answers 407, and \
+so does a wrong password. Check the values before the password - and check the \
+case of `ttl`, which is the one value that is case-sensitive: `10M` is refused \
+where `10m` is accepted."""
+410 = """\
+`isp` names a network the gateway will not give you. Measured on one value: \
+`comcast` answers 410 where a junk `isp` and `charter` both answer 406, so 410 \
+looks like a name the gateway knows and a pool this account cannot reach. That \
+is one ISP, so read it as the narrower fact and not as a rule. The account \
+API's ISP catalogue, filtered by country, is what says which names exist."""
+500 = """\
+one cause is measured and it is not the only cause a 500 can have: `city` sent \
+without a `region`. `country`+`region`+`city` opens the tunnel on two different \
+cities in two different regions, and dropping the `region` from either of them \
+turns the same request into a 500 - that much is an incomplete request answered \
+as a server fault. Try the region the account API's city catalogue files that \
+city under. A city name the catalogue does not hold is answered 406 instead. \
+Any other 500 is the gateway's own, and this sentence cannot tell them apart."""

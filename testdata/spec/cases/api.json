@@ -1,0 +1,641 @@
+{
+  "format": 1,
+  "about": "Account API behaviour, driven through each SDK's transport seam with canned responses. No case touches a network. Bodies are synthetic and shaped after measured responses - never recorded ones, because users/me and sub-users/ return live proxy passwords.",
+  "html_page": "<!doctype html><html><head><title>NodeMaven</title></head><body><div id=\"root\"></div></body></html>",
+  "cases": [
+    {
+      "id": "html-200-is-not-a-successful-delete",
+      "origin": {
+        "found": "2026-09-29",
+        "by": "spec drafting",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 1
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      },
+      "note": "dashboard.nodemaven.com answers an unregistered path 200 with its front end (measured 2026-09-09, 6415 bytes, byte-identical to a nonexistent path). A write that returns that page as its result reports a delete that did not happen."
+    },
+    {
+      "id": "html-200-is-not-a-successful-create",
+      "origin": {
+        "found": "2026-09-29",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "create_sub_user",
+        "args": {
+          "proxy_username": "u",
+          "proxy_password": "p"
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "html-200-is-not-a-successful-reset",
+      "origin": {
+        "found": "2026-09-29",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "reset_sub_user_usage",
+        "args": {
+          "ids": [
+            1
+          ]
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "html-200-is-not-a-successful-whitelist-delete",
+      "origin": {
+        "found": "2026-09-29",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "delete_whitelist_ip",
+        "args": {
+          "ip_id": 1
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "html-200-is-not-a-successful-update",
+      "origin": {
+        "found": "2026-09-29",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "update_sub_user",
+        "args": {
+          "id": 7,
+          "changes": {
+            "traffic_limit": 1
+          }
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "empty-2xx-is-still-an-answer",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 204,
+          "body": ""
+        }
+      ],
+      "expect": {
+        "ok": true
+      },
+      "note": "The control for the html cases: refusing an empty 2xx would break every delete that works."
+    },
+    {
+      "id": "html-200-is-not-an-account",
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "$html_page"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "delete-sub-user-sends-the-id-as-a-query-parameter",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"success\": true, \"description\": \"\", \"errors\": [], \"payload\": {}}"
+        }
+      ],
+      "expect_requests": [
+        {
+          "method": "DELETE",
+          "path": "/api/v2/base/sub-users/",
+          "query": [
+            [
+              "id",
+              "7"
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "envelope-success-false-inside-a-2xx-is-an-error",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"success\": false, \"description\": \"not allowed\", \"errors\": [], \"payload\": {}}"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "upsert-always-sends-protocol",
+      "call": {
+        "op": "upsert_whitelist_ip",
+        "args": {
+          "ip": "192.0.2.8",
+          "ports_count": 1
+        }
+      },
+      "responses": [
+        {
+          "status": 201,
+          "body": "{\"ip_id\": 12, \"message\": \"ok\"}"
+        }
+      ],
+      "expect_requests": [
+        {
+          "method": "POST",
+          "path": "/api/v2/base/whitelist/ip/upsert",
+          "json_has": {
+            "ip": "192.0.2.8",
+            "ports_count": 1,
+            "protocol": "HTTP"
+          }
+        }
+      ],
+      "expect": {
+        "ok": true
+      },
+      "note": "The server does not apply the default its own document declares; without protocol the body is refused 400 (2026-09-09, 16:18 ladder)."
+    },
+    {
+      "id": "a-transport-timeout-is-an-api-error",
+      "origin": {
+        "found": "2026-09-29",
+        "by": "smoke_client_live.py, isp_cities() at limit=1000",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "raise": "timeout"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      },
+      "note": "The transport raising the language's own timeout must come out as this package's error, not past it."
+    },
+    {
+      "id": "a-dropped-connection-is-an-api-error",
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "raise": "connection_reset"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "isp-cities-pages-at-100",
+      "call": {
+        "op": "isp_cities",
+        "args": {
+          "country__code": "us"
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "rows": {
+            "key": "cities",
+            "count": 0
+          }
+        }
+      ],
+      "expect_requests": [
+        {
+          "method": "GET",
+          "path": "/api/v2/base/locations/isps/cities/",
+          "query_has": [
+            [
+              "limit",
+              "100"
+            ],
+            [
+              "offset",
+              "0"
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "a-3xx-is-an-api-error-and-not-followed",
+      "origin": {
+        "found": "2026-09-29",
+        "by": "porting the API client to Rust",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 302,
+          "body": ""
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "requests_sent": 1
+      },
+      "note": "This case pins what the client does with a 3xx its transport returns. The half that matters - the built-in transport not following it and so not carrying the key to another host - lives below the transport seam and is pinned by each SDK's own loopback test. Python 0.1.4's default transport followed redirects and forwarded Authorization."
+    },
+    {
+      "id": "401-and-403-are-auth",
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 403,
+          "body": "{\"detail\": \"Authentication credentials were not provided.\"}"
+        }
+      ],
+      "expect": {
+        "error": "auth"
+      }
+    },
+    {
+      "id": "429-is-rate-limit",
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 429,
+          "body": "{\"detail\": \"slow down\"}"
+        }
+      ],
+      "expect": {
+        "error": "rate_limit"
+      }
+    },
+    {
+      "id": "offset-walk-advances-by-rows-returned",
+      "call": {
+        "op": "iterate",
+        "of": {
+          "op": "cities",
+          "args": {
+            "country__code": "us"
+          }
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "rows": {
+            "key": "results",
+            "count": 1000
+          }
+        },
+        {
+          "status": 200,
+          "rows": {
+            "key": "results",
+            "count": 965
+          }
+        },
+        {
+          "status": 200,
+          "rows": {
+            "key": "results",
+            "count": 0
+          }
+        }
+      ],
+      "expect_requests": [
+        {
+          "method": "GET",
+          "path": "/api/v2/base/locations/cities/",
+          "query_has": [
+            [
+              "limit",
+              "1000"
+            ],
+            [
+              "offset",
+              "0"
+            ]
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/api/v2/base/locations/cities/",
+          "query_has": [
+            [
+              "offset",
+              "1000"
+            ]
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/api/v2/base/locations/cities/",
+          "query_has": [
+            [
+              "offset",
+              "1965"
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "rows": 1965
+      },
+      "note": "limit is capped at 1000 server-side and US cities are 1965 (2026-09-08). A walk that stops on a short page, or advances by the limit asked, returns 1000."
+    },
+    {
+      "id": "whitelist-walk-ends-on-404",
+      "call": {
+        "op": "iterate",
+        "of": {
+          "op": "whitelist_ips",
+          "args": {}
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "rows": {
+            "key": "results",
+            "count": 3
+          }
+        },
+        {
+          "status": 404,
+          "body": "{\"detail\": \"Invalid page.\"}"
+        }
+      ],
+      "expect": {
+        "rows": 3
+      }
+    },
+    {
+      "id": "sub-users-404-is-not-an-ending",
+      "call": {
+        "op": "iterate",
+        "of": {
+          "op": "sub_users",
+          "args": {}
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "rows": {
+            "key": "payload",
+            "count": 1,
+            "envelope": true
+          }
+        },
+        {
+          "status": 404,
+          "body": "{\"detail\": \"Not found.\"}"
+        }
+      ],
+      "expect": {
+        "error": "not_found"
+      },
+      "note": "sub-users/ ends with an empty 200. A 404 there is a wrong path, and swallowing it would hide one."
+    },
+    {
+      "id": "a-foreign-next-link-is-not-followed",
+      "call": {
+        "op": "iterate",
+        "of": {
+          "op": "countries",
+          "args": {}
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"results\": [{\"code\": \"us\"}], \"next\": \"https://evil.example/api/v2/base/locations/countries/?offset=1\"}"
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "requests_sent": 1
+      },
+      "note": "The next request would carry the API key in a header."
+    },
+    {
+      "id": "update-with-nothing-to-change-is-refused-locally",
+      "call": {
+        "op": "update_sub_user",
+        "args": {
+          "id": 7,
+          "changes": {}
+        }
+      },
+      "responses": [],
+      "expect": {
+        "error": "api",
+        "requests_sent": 0
+      }
+    },
+    {
+      "id": "an-empty-2xx-to-a-get-is-an-api-error",
+      "origin": {
+        "found": "2026-09-29",
+        "by": "review of the Rust port",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased",
+          "rust": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": ""
+        }
+      ],
+      "expect": {
+        "error": "api"
+      },
+      "note": "Every call but a DELETE is answered with JSON; an empty body used to become {} or an empty page and read as nothing there."
+    },
+    {
+      "id": "success-false-without-payload-is-an-api-error",
+      "origin": {
+        "found": "2026-09-29",
+        "by": "review of the Rust port",
+        "published_unfixed": [
+          "pypi nodemaven 0.1.4"
+        ],
+        "fixed": {
+          "python": "2026-09-29, unreleased",
+          "rust": "2026-09-29, unreleased"
+        }
+      },
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"success\": false, \"description\": \"not allowed\"}"
+        }
+      ],
+      "expect": {
+        "error": "api"
+      }
+    },
+    {
+      "id": "the-nested-error-object-is-auth",
+      "call": {
+        "op": "me",
+        "args": {}
+      },
+      "responses": [
+        {
+          "status": 401,
+          "body": "{\"error\": {\"code\": \"authentication_required\", \"message\": \"Authentication credentials were not provided.\", \"retryable\": false}}"
+        }
+      ],
+      "expect": {
+        "error": "auth"
+      },
+      "note": "The host's answer to a missing key since at least 2026-10-13. Both SDKs also read its message and code into the error text, which their own tests pin; this file pins the class only."
+    }
+  ]
+}

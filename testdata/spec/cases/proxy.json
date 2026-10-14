@@ -1,0 +1,154 @@
+{
+  "format": 1,
+  "about": "Username and URL construction, and the refusals that go with it. Keyed on the wire, never on a language's call syntax. Every SDK runs every case in CI.",
+  "defaults": {
+    "provider": "nodemaven",
+    "credentials": {"login": "acct", "password": "pw", "host": "gate.example.com", "port": 8080}
+  },
+  "cases": [
+    {
+      "id": "dialect-basic",
+      "params": [["country", "us"], ["filter", "medium"], ["sid", "abc123"]],
+      "expect": {
+        "username": "acct-country-us-filter-medium-sid-abc123",
+        "url": "http://acct-country-us-filter-medium-sid-abc123:pw@gate.example.com:8080"
+      }
+    },
+    {
+      "id": "no-params-is-the-bare-login",
+      "params": [],
+      "expect": {"username": "acct"}
+    },
+    {
+      "id": "order-follows-the-call-a",
+      "params": [["country", "us"], ["sid", "x"]],
+      "expect": {"username": "acct-country-us-sid-x"},
+      "note": "Order does not move the session (param_order.py, 2026-09-08, 20 rounds a side), so pinning call order is safe."
+    },
+    {
+      "id": "order-follows-the-call-b",
+      "params": [["sid", "x"], ["country", "us"]],
+      "expect": {"username": "acct-sid-x-country-us"}
+    },
+    {
+      "id": "url-percent-encodes-credentials",
+      "credentials": {"password": "pa/ss@1:2"},
+      "params": [["country", "us"]],
+      "expect": {"url": "http://acct-country-us:pa%2Fss%401%3A2@gate.example.com:8080"},
+      "note": "The unreserved set is Python's quote(safe=\"\"): -, _, . and ~ stay, everything else is encoded."
+    },
+    {
+      "id": "reproduces-a-gateway-generated-username",
+      "params": [["country", "us"], ["region", "District of Columbia"], ["sid", "bfd1c859433a4"], ["filter", "medium"]],
+      "expect": {"username": "acct-country-us-region-district_of_columbia-sid-bfd1c859433a4-filter-medium"},
+      "note": "Everything right of the login is a string the vendor's generator produced, pasted 2026-09-07."
+    },
+    {
+      "id": "fold-lowercases-ascii",
+      "params": [["country", "US"]],
+      "expect": {"username": "acct-country-us"}
+    },
+    {
+      "id": "fold-is-ascii-only",
+      "params": [["city", "İstanbul"]],
+      "expect": {"username": "acct-city-İstanbul"},
+      "note": "strings.ToLower, str.lower and str::to_lowercase all fold U+0130, and not identically. The contract folds A-Z only."
+    },
+    {
+      "id": "sid-keeps-its-case",
+      "params": [["sid", "Order4417"]],
+      "expect": {"username": "acct-sid-Order4417"}
+    },
+    {
+      "id": "no-break-space-is-not-ascii-whitespace",
+      "params": [["sid", "a b"]],
+      "expect": {"username": "acct-sid-a b"}
+    },
+    {
+      "id": "unknown-name-is-refused",
+      "params": [["contry", "us"]],
+      "expect": {"error": "param"},
+      "note": "The gateway answers an unknown name 200 and drops it."
+    },
+    {
+      "id": "empty-value-is-refused",
+      "params": [["country", ""]],
+      "expect": {"error": "param"},
+      "note": "The gateway does not answer; the connection hangs about 20 s (2026-08-10)."
+    },
+    {
+      "id": "separator-in-a-value-is-refused",
+      "params": [["country", "us-east"]],
+      "expect": {"error": "param"},
+      "note": "The gateway cuts at the separator: measured on sid 2026-08-20 and on isp 2026-09-09."
+    },
+    {
+      "id": "vertical-tab-is-whitespace",
+      "params": [["sid", "a\u000bb"]],
+      "expect": {"error": "param"},
+      "note": "Rust's char::is_ascii_whitespace excludes U+000B and Python's str.isspace includes it. The set is the six characters in the spec README, not any language's predicate."
+    },
+    {
+      "id": "norotate-is-refused",
+      "params": [["sid", "x"], ["norotate", "true"]],
+      "expect": {"error": "param"},
+      "note": "Answered 200 and dropped, measured three ways from the Linux server 2026-08-26."
+    },
+    {
+      "id": "value-list-is-folded-with-the-value",
+      "origin": {"sdk": "python", "fixed": "2026-09-09", "crossed_to": {"rust": "2026-09-11"}, "published_unfixed": ["crates.io nodemaven 0.1.0"]},
+      "provider": {"toml": "label = \"P\"\nknown_params = [\"region\"]\nnormalize = [\"region\"]\nvalues = { region = [\"District of Columbia\"] }\n"},
+      "params": [["region", "District of Columbia"]],
+      "expect": {"username": "acct-region-district_of_columbia"},
+      "note": "The caller's value is folded before the check, so the list has to be folded too, or every declared value is refused."
+    },
+    {
+      "id": "value-list-accepts-either-case-once-folded",
+      "origin": {"sdk": "python", "fixed": "2026-09-09", "crossed_to": {"rust": "2026-09-11"}},
+      "provider": {"toml": "label = \"P\"\nknown_params = [\"country\"]\nnormalize = [\"country\"]\nvalues = { country = [\"US\"] }\n"},
+      "params": [["country", "us"]],
+      "expect": {"username": "acct-country-us"}
+    },
+    {
+      "id": "definition-port-zero-is-refused-at-load",
+      "origin": {"sdk": "python", "fixed": "2026-09-09", "crossed_to": {"rust": "2026-09-11"}, "published_unfixed": ["crates.io nodemaven 0.1.0"]},
+      "load": {"toml": "label = \"P\"\nknown_params = [\"country\"]\nhost = \"gateway.example\"\nport = 0\n"},
+      "expect": {"error": "provider"}
+    },
+    {
+      "id": "definition-port-out-of-range-is-refused-at-load",
+      "load": {"toml": "label = \"P\"\nknown_params = [\"country\"]\nhost = \"gateway.example\"\nport = 70000\n"},
+      "expect": {"error": "provider"}
+    },
+    {
+      "id": "fold-into-the-separator-is-refused-at-load",
+      "load": {"toml": "label = \"Underscored\"\nknown_params = [\"city\"]\nseparator = \"_\"\nnormalize = [\"city\"]\n"},
+      "expect": {"error": "provider"},
+      "note": "The fold inserts _, which this separator would then cut."
+    },
+    {
+      "id": "port-text-superscript-is-not-a-port",
+      "port_text": "²",
+      "params": [],
+      "expect": {"error": "credentials"},
+      "note": "str.isdigit and char::is_numeric are both true for U+00B2."
+    },
+    {
+      "id": "port-text-zero-is-refused",
+      "port_text": "0",
+      "params": [],
+      "expect": {"error": "credentials"},
+      "note": "Legal in bind, meaningless in connect; Windows and Linux fail it with different errnos."
+    },
+    {
+      "id": "port-text-leading-space-is-refused",
+      "port_text": " 8080",
+      "params": [],
+      "expect": {"error": "credentials"},
+      "note": "Python's int() accepts it, Go's strconv.Atoi accepts \"+8080\". Neither parser is the rule."
+    },
+    {"id": "sessions-skip-a-hex-digit-separator", "origin": {"found": "2026-09-29", "by": "review of the Rust port", "published_unfixed": ["pypi nodemaven 0.1.4"], "fixed": {"python": "2026-09-29, unreleased", "rust": "2026-09-29, unreleased"}}, "provider": {"toml": "label = \"P\"\nknown_params = [\"sid\"]\nsession_param = \"sid\"\nseparator = \"a\"\npair_separator = \"a\"\n"}, "sessions": {"count": 200, "length": 6}, "expect": {"sessions": 200, "sid_excludes": "a"}, "note": "An id containing the separator used to be handed to session(), which refused it, so sessions() failed at random on such a definition."},
+    {"id": "sessions-refuse-a-space-the-separator-shrinks", "origin": {"found": "2026-09-29", "by": "review of the Rust port", "published_unfixed": ["pypi nodemaven 0.1.4"], "fixed": {"python": "2026-09-29, unreleased", "rust": "2026-09-29, unreleased"}}, "provider": {"toml": "label = \"P\"\nknown_params = [\"sid\"]\nsession_param = \"sid\"\nseparator = \"0\"\npair_separator = \"0\"\n"}, "sessions": {"count": 255, "length": 1}, "expect": {"error": "param"}, "note": "Separator 0 leaves 225 usable one-byte ids: 255 passes the size bound, and without a cap on the draws the call never returns."},
+    {"id": "sessions-draw-long-ids-around-a-hex-digit-separator", "origin": {"found": "2026-09-29", "by": "review of the separator fix", "fixed": {"python": "2026-09-29, unreleased", "rust": "2026-09-29, unreleased"}}, "provider": {"toml": "label = \"P\"\nknown_params = [\"sid\"]\nsession_param = \"sid\"\nseparator = \"0\"\npair_separator = \"0\"\n"}, "sessions": {"count": 3, "length": 100}, "expect": {"sessions": 3, "sid_excludes": "0"}, "note": "Skipping whole ids that contain the separator works for 12 characters and not for 200: (15/16)^200 is about 2.5e-6. The separator has to be kept out of the alphabet."}
+  ]
+}
