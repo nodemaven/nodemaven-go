@@ -41,9 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # golangci-lint cannot analyse a standard library newer than the Go it
+      # was built with, so the lint job pins Go rather than following stable.
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version: "1.25"
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.11
