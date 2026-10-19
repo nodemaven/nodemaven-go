@@ -726,7 +726,14 @@ func detail(value any) string {
 	case string:
 		return v
 	case []any:
-		return flatten(v)
+		if !texts(v) {
+			return shape(v)
+		}
+		parts := make([]string, len(v))
+		for i, item := range v {
+			parts[i] = item.(string)
+		}
+		return strings.Join(parts, "; ")
 	case map[string]any:
 		for _, key := range []string{"detail", "message", "error", "description"} {
 			if text, ok := v[key].(string); ok && text != "" {
@@ -746,18 +753,118 @@ func detail(value any) string {
 			if errs != "" {
 				return errs
 			}
-		case map[string]any:
-			if len(errs) > 0 {
+		case map[string]any, []any:
+			if errorMessages(errs) {
 				return flatten(errs)
 			}
-		case []any:
-			if len(errs) > 0 {
-				return flatten(errs)
+			if !isEmpty(errs) {
+				return shape(errs)
 			}
 		}
-		return flatten(v)
+		if fieldErrors(v) {
+			return flatten(v)
+		}
+		return shape(v)
 	default:
 		return ""
+	}
+}
+
+// errorMessages reports whether an errors value may be printed: messages, or
+// a field mapped to a message or a list of them. Anything nested deeper is data.
+func errorMessages(value any) bool {
+	switch v := value.(type) {
+	case []any:
+		return texts(v)
+	case map[string]any:
+		if len(v) == 0 {
+			return false
+		}
+		for _, item := range v {
+			switch m := item.(type) {
+			case string:
+				if m == "" {
+					return false
+				}
+			case []any:
+				if !texts(m) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// texts reports a non-empty list of non-empty strings: messages, not data.
+func texts(items []any) bool {
+	if len(items) == 0 {
+		return false
+	}
+	for _, item := range items {
+		if text, ok := item.(string); !ok || text == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func isEmpty(value any) bool {
+	switch v := value.(type) {
+	case []any:
+		return len(v) == 0
+	case map[string]any:
+		return len(v) == 0
+	}
+	return true
+}
+
+// fieldErrors reports {field: [message, ...]}, Django REST Framework's
+// validation shape, possibly nested. Values that are not lists of strings are
+// data, not messages, and data is not printed.
+func fieldErrors(value map[string]any) bool {
+	if len(value) == 0 {
+		return false
+	}
+	for _, item := range value {
+		switch v := item.(type) {
+		case map[string]any:
+			if !fieldErrors(v) {
+				return false
+			}
+		case []any:
+			if !texts(v) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// shape describes an answer with no message without any of its values. The
+// sub-user payload carries proxy_password, so printing an unknown body is
+// printing a live credential into whatever logs the error.
+func shape(value any) string {
+	switch v := value.(type) {
+	case map[string]any:
+		if len(v) == 0 {
+			return "no message in the answer"
+		}
+		keys := make([]string, 0, len(v))
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		return "no message in the answer (keys: " + strings.Join(keys, ", ") + ")"
+	case []any:
+		return "no message in the answer (a list of " + strconv.Itoa(len(v)) + ")"
+	default:
+		return "no message in the answer"
 	}
 }
 
