@@ -636,6 +636,63 @@
         "error": "auth"
       },
       "note": "The host's answer to a missing key since at least 2026-10-13. Both SDKs also read its message and code into the error text, which their own tests pin; this file pins the class only."
+    },
+    {
+      "id": "success-false-without-a-message-never-prints-the-payload",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"success\": false, \"description\": \"\", \"errors\": \"\", \"payload\": {\"proxy_username\": \"u\", \"proxy_password\": \"LIVE-PASSWORD-7f3a\"}}"
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "message_excludes": "LIVE-PASSWORD-7f3a"
+      }
+    },
+    {
+      "id": "error-body-without-a-message-never-prints-its-values",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 400,
+          "body": "{\"proxy_username\": \"u\", \"proxy_password\": \"LIVE-PASSWORD-7f3a\"}"
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "message_excludes": "LIVE-PASSWORD-7f3a"
+      }
+    },
+    {
+      "id": "error-body-that-is-a-list-of-objects-never-prints-them",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 500,
+          "body": "[{\"proxy_password\": \"LIVE-PASSWORD-7f3a\"}]"
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "message_excludes": "LIVE-PASSWORD-7f3a"
+      }
     }
   ]
 }

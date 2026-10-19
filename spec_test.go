@@ -326,10 +326,16 @@ func TestSpecAPICases(t *testing.T) {
 				got["ok"] = true
 			}
 			if err != nil {
-				got = map[string]any{"error": errorName(err)}
+				got = map[string]any{"error": errorName(err), "message": err.Error()}
 			}
 			got["requests_sent"] = len(transport.sent)
 			for key, want := range c["expect"].(map[string]any) {
+				if key == "message_excludes" {
+					if message, _ := got["message"].(string); strings.Contains(message, want.(string)) {
+						t.Errorf("error text carries %q: %s", want, message)
+					}
+					continue
+				}
 				if !reflect.DeepEqual(normal(got[key]), normal(want)) {
 					t.Errorf("%s: want %v, got %v (all: %v)", key, want, got[key], got)
 				}

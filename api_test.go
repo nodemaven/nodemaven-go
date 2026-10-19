@@ -145,6 +145,30 @@ func TestErrorDialects(t *testing.T) {
 	}
 }
 
+// The sub-user payload carries the live proxy password, and an answer with no
+// message of its own once printed it into the error text.
+func TestAnAnswerWithoutAMessageNeverPrintsItsValues(t *testing.T) {
+	clearGatewayEnv(t)
+	for _, c := range []struct {
+		status int
+		body   string
+		want   string
+	}{
+		{200, `{"success": false, "description": "", "errors": "", "payload": {"proxy_username": "u", "proxy_password": "LIVE-PASSWORD"}}`,
+			"keys: description, errors, payload, success"},
+		{400, `{"proxy_username": "u", "proxy_password": "LIVE-PASSWORD"}`, "keys: proxy_password, proxy_username"},
+		{500, `[{"proxy_password": "LIVE-PASSWORD"}]`, "a list of 1"},
+		{400, `{"expiry_date": ["Enter a valid date."]}`, "Enter a valid date."},
+	} {
+		transport := &cannedTransport{t: t, responses: []any{map[string]any{"status": jsonNumber(c.status), "body": c.body}}}
+		client, _ := NewClient(WithAPIKey("k"), WithHTTPClient(&http.Client{Transport: transport}))
+		_, err := client.DeleteSubUser(context.Background(), 7)
+		if err == nil || strings.Contains(err.Error(), "LIVE-PASSWORD") || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: want %q and no password in the message, got %v", c.body, c.want, err)
+		}
+	}
+}
+
 func TestErrorKindsAreAPIKinds(t *testing.T) {
 	for _, kind := range []error{ErrAuth, ErrNotFound, ErrRateLimit} {
 		err := &Error{Kind: kind}
