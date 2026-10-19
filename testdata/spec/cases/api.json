@@ -693,6 +693,25 @@
         "error": "api",
         "message_excludes": "LIVE-PASSWORD-7f3a"
       }
+    },
+    {
+      "id": "errors-holding-data-never-prints-it",
+      "call": {
+        "op": "delete_sub_user",
+        "args": {
+          "id": 7
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "body": "{\"success\": false, \"description\": \"\", \"errors\": {\"payload\": {\"proxy_password\": \"LIVE-PASSWORD-7f3a\"}}}"
+        }
+      ],
+      "expect": {
+        "error": "api",
+        "message_excludes": "LIVE-PASSWORD-7f3a"
+      }
     }
   ]
 }

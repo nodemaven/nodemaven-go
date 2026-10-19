@@ -755,13 +755,12 @@ func detail(value any) string {
 			if errs != "" {
 				return errs
 			}
-		case map[string]any:
-			if len(errs) > 0 {
+		case map[string]any, []any:
+			if errorMessages(errs) {
 				return flatten(errs)
 			}
-		case []any:
-			if len(errs) > 0 {
-				return flatten(errs)
+			if !isEmpty(errs) {
+				return shape(errs)
 			}
 		}
 		if fieldErrors(v) {
@@ -771,6 +770,50 @@ func detail(value any) string {
 	default:
 		return ""
 	}
+}
+
+// errorMessages reports whether an errors value may be printed: messages, or
+// a field mapped to a message or a list of them. Anything nested deeper is data.
+func errorMessages(value any) bool {
+	switch v := value.(type) {
+	case []any:
+		if len(v) == 0 {
+			return false
+		}
+		for _, item := range v {
+			if _, ok := item.(string); !ok {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		if len(v) == 0 {
+			return false
+		}
+		for _, item := range v {
+			switch m := item.(type) {
+			case string:
+			case []any:
+				if !errorMessages(m) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func isEmpty(value any) bool {
+	switch v := value.(type) {
+	case []any:
+		return len(v) == 0
+	case map[string]any:
+		return len(v) == 0
+	}
+	return true
 }
 
 // fieldErrors reports {field: [message, ...]}, Django REST Framework's

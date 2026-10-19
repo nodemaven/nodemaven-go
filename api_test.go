@@ -159,6 +159,7 @@ func TestAnAnswerWithoutAMessageNeverPrintsItsValues(t *testing.T) {
 		{400, `{"proxy_username": "u", "proxy_password": "LIVE-PASSWORD"}`, "keys: proxy_password, proxy_username"},
 		{500, `[{"proxy_password": "LIVE-PASSWORD"}]`, "a list of 1"},
 		{400, `{"expiry_date": ["Enter a valid date."]}`, "Enter a valid date."},
+		{400, `{"errors": {"payload": {"proxy_password": "LIVE-PASSWORD"}}}`, "keys: payload"},
 	} {
 		transport := &cannedTransport{t: t, responses: []any{map[string]any{"status": jsonNumber(c.status), "body": c.body}}}
 		client, _ := NewClient(WithAPIKey("k"), WithHTTPClient(&http.Client{Transport: transport}))
