@@ -726,16 +726,14 @@ func detail(value any) string {
 	case string:
 		return v
 	case []any:
-		var texts []string
-		for _, item := range v {
-			if text, ok := item.(string); ok {
-				texts = append(texts, text)
-			}
-		}
-		if len(texts) == 0 {
+		if !texts(v) {
 			return shape(v)
 		}
-		return strings.Join(texts, "; ")
+		parts := make([]string, len(v))
+		for i, item := range v {
+			parts[i] = item.(string)
+		}
+		return strings.Join(parts, "; ")
 	case map[string]any:
 		for _, key := range []string{"detail", "message", "error", "description"} {
 			if text, ok := v[key].(string); ok && text != "" {
@@ -777,15 +775,7 @@ func detail(value any) string {
 func errorMessages(value any) bool {
 	switch v := value.(type) {
 	case []any:
-		if len(v) == 0 {
-			return false
-		}
-		for _, item := range v {
-			if _, ok := item.(string); !ok {
-				return false
-			}
-		}
-		return true
+		return texts(v)
 	case map[string]any:
 		if len(v) == 0 {
 			return false
@@ -793,8 +783,11 @@ func errorMessages(value any) bool {
 		for _, item := range v {
 			switch m := item.(type) {
 			case string:
+				if m == "" {
+					return false
+				}
 			case []any:
-				if !errorMessages(m) {
+				if !texts(m) {
 					return false
 				}
 			default:
@@ -804,6 +797,19 @@ func errorMessages(value any) bool {
 		return true
 	}
 	return false
+}
+
+// texts reports a non-empty list of non-empty strings: messages, not data.
+func texts(items []any) bool {
+	if len(items) == 0 {
+		return false
+	}
+	for _, item := range items {
+		if text, ok := item.(string); !ok || text == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func isEmpty(value any) bool {
@@ -830,13 +836,8 @@ func fieldErrors(value map[string]any) bool {
 				return false
 			}
 		case []any:
-			if len(v) == 0 {
+			if !texts(v) {
 				return false
-			}
-			for _, entry := range v {
-				if _, ok := entry.(string); !ok {
-					return false
-				}
 			}
 		default:
 			return false
