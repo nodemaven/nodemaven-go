@@ -12,6 +12,10 @@ go get github.com/nodemaven/nodemaven-go
 Requires Go 1.22 or later. One dependency, `github.com/BurntSushi/toml`, to
 read gateway definitions.
 
+Login and password are the Proxy Username and Proxy Password from Proxy Setup in the
+[dashboard](https://dashboard.nodemaven.com), not the dashboard login.
+No account yet? [Sign up](https://dashboard.nodemaven.com/accounts/signup/?utm_source=github&utm_medium=readme&utm_campaign=sdk_go&utm_content=signup_promo) and enter the code **GITHUB** for 2 GB of free traffic, once per account.
+
 ## Quick start
 
 ```go
