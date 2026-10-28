@@ -1,5 +1,7 @@
 # nodemaven-go
 
+[![2 GB free with code GITHUB](https://img.shields.io/badge/%F0%9F%8E%81%202%20GB%20free-code%20GITHUB-1153FC)](https://dashboard.nodemaven.com/accounts/signup/?utm_source=github&utm_medium=readme&utm_campaign=sdk_go&utm_content=promo_badge)
+
 Go client for [NodeMaven](https://nodemaven.com) proxies. It builds the proxy
 username the gateway expects, checks the parameters before anything is sent,
 and hands the result to the HTTP client you already use. It also wraps the
@@ -14,7 +16,9 @@ read gateway definitions.
 
 Login and password are the Proxy Username and Proxy Password from Proxy Setup in the
 [dashboard](https://dashboard.nodemaven.com), not the dashboard login.
-No account yet? [Sign up](https://dashboard.nodemaven.com/accounts/signup/?utm_source=github&utm_medium=readme&utm_campaign=sdk_go&utm_content=signup_promo) and enter the code **GITHUB** for 2 GB of free traffic, once per account.
+
+> [!TIP]
+> 🎁 **2 GB of free traffic.** No account yet? [Sign up](https://dashboard.nodemaven.com/accounts/signup/?utm_source=github&utm_medium=readme&utm_campaign=sdk_go&utm_content=signup_promo) and enter the code **GITHUB**. Once per account.
 
 ## Quick start
 
